@@ -10,15 +10,11 @@
 
 /**
  * PROCESSO COORDENADOR - Mini-Projeto 1: Quebra de Senhas Paralelo
- * 
- * Este programa coordena múltiplos workers para quebrar senhas MD5 em paralelo.
+ * * Este programa coordena múltiplos workers para quebrar senhas MD5 em paralelo.
  * O MD5 JÁ ESTÁ IMPLEMENTADO - você deve focar na paralelização (fork/exec/wait).
- * 
- * Uso: ./coordinator <hash_md5> <tamanho> <charset> <num_workers>
- * 
- * Exemplo: ./coordinator "900150983cd24fb0d6963f7d28e17f72" 3 "abc" 4
- * 
- * SEU TRABALHO: Implementar os TODOs marcados abaixo
+ * * Uso: ./coordinator <hash_md5> <tamanho> <charset> <num_workers>
+ * * Exemplo: ./coordinator "900150983cd24fb0d6963f7d28e17f72" 3 "abc" 4
+ * * SEU TRABALHO: Implementar os TODOs marcados abaixo
  */
 
 #define MAX_WORKERS 16
@@ -26,8 +22,7 @@
 
 /**
  * Calcula o tamanho total do espaço de busca
- * 
- * @param charset_len Tamanho do conjunto de caracteres
+ * * @param charset_len Tamanho do conjunto de caracteres
  * @param password_len Comprimento da senha
  * @return Número total de combinações possíveis
  */
@@ -42,8 +37,7 @@ long long calculate_search_space(int charset_len, int password_len) {
 /**
  * Converte um índice numérico para uma senha
  * Usado para definir os limites de cada worker
- * 
- * @param index Índice numérico da senha
+ * * @param index Índice numérico da senha
  * @param charset Conjunto de caracteres
  * @param charset_len Tamanho do conjunto
  * @param password_len Comprimento da senha
@@ -163,13 +157,6 @@ int main(int argc, char *argv[]) {
 
         current_start_index = end_index;
     }
-        // TODO: Calcular intervalo de senhas para este worker
-        // TODO: Converter indices para senhas de inicio e fim
-        // TODO 4: Usar fork() para criar processo filho
-        // TODO 5: No processo pai: armazenar PID
-        // TODO 6: No processo filho: usar execl() para executar worker
-        // TODO 7: Tratar erros de fork() e execl()
-    }
     
     printf("\nTodos os workers foram iniciados. Aguardando conclusão...\n");
     
@@ -177,7 +164,7 @@ int main(int argc, char *argv[]) {
     // IMPORTANTE: O pai deve aguardar TODOS os filhos para evitar zumbis
     
     // IMPLEMENTE AQUI:
-int workers_finished = 0;
+    int workers_finished = 0;
     while (workers_finished < num_workers) {
         int status;
         pid_t terminated_pid = wait(&status);
@@ -220,7 +207,7 @@ int workers_finished = 0;
     // Ler o arquivo password_found.txt se existir
     
     // IMPLEMENTE AQUI:
-FILE *result_file = fopen(RESULT_FILE, "r");
+    FILE *result_file = fopen(RESULT_FILE, "r");
     
     if (result_file != NULL) {
         char line_buffer[password_len + 10]; 
