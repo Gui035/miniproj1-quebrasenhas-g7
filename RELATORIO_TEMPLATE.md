@@ -1,6 +1,6 @@
 # Relatório: Mini-Projeto 1 - Quebra-Senhas Paralelo
 
-**Aluno(s):** Nome (Matrícula), Nome (Matrícula),,,  
+**Aluno(s):** Guillermo Martinez 10418697, Nome (Matrícula),,,  
 ---
 
 ## 1. Estratégia de Paralelização
