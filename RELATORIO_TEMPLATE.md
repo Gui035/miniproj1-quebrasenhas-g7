@@ -74,13 +74,10 @@ for (int i = 0; i < num_workers; i++) {
 ## 3. Comunicação Entre Processos
 
 **Como você garantiu que apenas um worker escrevesse o resultado?**
-
-[Explique como você implementou uma escrita atômica e como isso evita condições de corrida]
-Leia sobre condições de corrida (aqui)[https://pt.stackoverflow.com/questions/159342/o-que-%C3%A9-uma-condi%C3%A7%C3%A3o-de-corrida]
+Para garantir que apenas um worker escrevesse o resultado, utilizei uma operação atômica fornecida pelo próprio sistema operacional através da chamada de sistema open(). O caso é que o sistema operacional garante que a verificação da existência do arquivo e sua criação são uma única operação atômica (indivisível). Não há como outro processo interferir entre o momento em que o SO verifica que o arquivo não existe e o momento em que ele o cria.
 
 **Como o coordinator consegue ler o resultado?**
-
-[Explique como o coordinator lê o arquivo de resultado e faz o parse da informação]
+O coordinator lê e analisa (faz o parse) do arquivo de resultado na etapa final de sua execução, após ter esperado por todos os processos worker. O coordinator primeiro tenta abrir o arquivo RESULT_FILE, uma vez que o arquivo está aberto, o programa lê a única linha de conteúdo que ele deve ter. Depois de ler a linha, o programa a manipula para extrair apenas a senha.
 
 ---
 
@@ -90,17 +87,17 @@ O speedup é o tempo do teste com 1 worker dividido pelo tempo com 4 workers.
 
 | Teste | 1 Worker | 2 Workers | 4 Workers | Speedup (4w) |
 |-------|----------|-----------|-----------|--------------|
-| Hash: 202cb962ac59075b964b07152d234b70<br>Charset: "0123456789"<br>Tamanho: 3<br>Senha: "123" | ___s | ___s | ___s | ___ |
-| Hash: 5d41402abc4b2a76b9719d911017c592<br>Charset: "abcdefghijklmnopqrstuvwxyz"<br>Tamanho: 5<br>Senha: "hello" | ___s | ___s | ___s | ___ |
+| Hash: 202cb962ac59075b964b07152d234b70<br>Charset: "0123456789"<br>Tamanho: 3<br>Senha: "123" | 0.01s | 0.01s | 0.01s | 1.0x |
+| Hash: 5d41402abc4b2a76b9719d911017c592<br>Charset: "abcdefghijklmnopqrstuvwxyz"<br>Tamanho: 5<br>Senha: "hello" | 4.52s | 2.27s | 1.14s | 3.96x |
 
 **O speedup foi linear? Por quê?**
-[Analise se dobrar workers realmente dobrou a velocidade e explique o overhead de criar processos]
+Não, o speedup não foi linear para o teste 1 (senha "123"). O speedup foi de aproximadamente 1.0x, o que significa que não houve ganho de velocidade. Isso acontece porque a tarefa era extremamente curta. O tempo total de execução foi dominado pela sobrecarga (overhead) do sistema operacional para criar e gerenciar os processos, e não pelo trabalho de quebrar a senha em si. Entretanto, para o teste 2 (senha "hello") o speedup foi quase perfeitamente linear. O speedup de 3.96x com 4 workers é muito próximo do speedup ideal de 4x. Isso acontece por duas razões principais que tornam este problema ideal para paralelização:CPU-bound: o trabalho dos workers consiste quase inteiramente em fazer cálculos (gerar hashes MD5). Eles não perdem tempo esperando por operações lentas como leitura de disco ou rede (I/O). Além de que trata-se de uma tarefa altamente paralizável. 
 
 ---
 
 ## 5. Desafios e Aprendizados
 **Qual foi o maior desafio técnico que você enfrentou?**
-[Descreva um problema e como resolveu. Ex: "Tive dificuldade com o incremento de senha, mas resolvi tratando-o como um contador em base variável"]
+O maior problema enfrentado foi no desenvolvimento do coordinator, o processo filho é uma cópia exata do processo pai e a grande dificuldade foi no momento do código que o filho chama o execl(), tendo em vista que ele apaga a memória do processo filho para que o worker possa funcionar, porém, por ter apagado a memória, o worker perde o acesso às variáveis (start_pass, end_pass), por exemplo, e por isso a grande dificuldade foi passar as informações únicas a cada iteração do loop. 
 
 ---
 
