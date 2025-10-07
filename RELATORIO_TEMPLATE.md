@@ -1,6 +1,6 @@
 # Relatório: Mini-Projeto 1 - Quebra-Senhas Paralelo
 
-**Aluno(s):** Guillermo Martinez 10418697, Nome (Matrícula),,,  
+**Aluno(s):** Guillermo Martinez 10418697, Felipe Marques 10437877
 ---
 
 ## 1. Estratégia de Paralelização
@@ -13,25 +13,53 @@ A ideia foi converter o espaço de busca total em números (índices) e atribuir
 
 **Código relevante:** Cole aqui a parte do coordinator.c onde você calcula a divisão:
 ```c
-long long total = 1;
-for (int i = 0; i < password_len; i++) {
-    total *= charset_len;
+/* calcula o número total de combinações */
+long long calculate_search_space(int charset_len, int password_len) {
+    long long total = 1;
+    for (int i = 0; i < password_len; i++) total *= charset_len;
+    return total;
 }
 
-long long chunk = total / num_workers;
-long long remainder = total % num_workers;
-
-for (int i = 0; i < num_workers; i++) {
-    long long start_index = i * chunk + (i < remainder ? i : remainder);
-    long long end_index   = start_index + chunk - 1;
-    if (i < remainder) end_index++;
-
-    char start_pass[128], end_pass[128];
-    index_to_password(start_index, charset, password_len, start_pass);
-    index_to_password(end_index,   charset, password_len, end_pass);
-
-    // execl chamando worker com start_pass e end_pass
+/* conversão índice -> senha (lexicográfico) */
+void index_to_password(long long index, const char *charset, int charset_len,
+                       int password_len, char *output) {
+    for (int i = password_len - 1; i >= 0; i--) {
+        output[i] = charset[index % charset_len];
+        index /= charset_len;
+    }
+    output[password_len] = '\0';
 }
+
+/* ...no main(), após calcular total_space... */
+
+/* divisão */
+long long passwords_per_worker = total_space / num_workers;
+long long remaining = total_space % num_workers;
+
+long long current_start_index = 0;
+for (int i = 0; i < num_workers; ++i) {
+    long long range_size = passwords_per_worker + (i < remaining ? 1 : 0);
+
+    if (range_size == 0) {
+        /* nada para esse worker */
+        printf("Worker %d: sem intervalo (range_size == 0), pulando.\n", i);
+        continue;
+    }
+
+    long long end_index = current_start_index + range_size; /* exclusive */
+
+    /* buffers para senhas (inclui terminador) */
+    char start_pass[password_len + 1];
+    char end_pass[password_len + 1];
+
+    index_to_password(current_start_index, charset, charset_len, password_len, start_pass);
+    index_to_password(end_index - 1, charset, charset_len, password_len, end_pass);
+
+    /* ...aqui vem fork/exec (veja abaixo) ... */
+
+    current_start_index = end_index;
+}
+
 
 ```
 
@@ -47,24 +75,34 @@ O processo pai continua criando os demais workers, e ao final usa wait() para ag
 
 **Código do fork/exec:**
 ```c
-for (int i = 0; i < num_workers; i++) {
-    pid_t pid = fork();
-    if (pid == 0) {
-        // processo filho
-        execl("./worker", "./worker",
-              target_hash, start_pass, end_pass,
-              charset, pass_len_str, worker_id_str, NULL);
-        perror("execl");
-        exit(1);
-    } else if (pid < 0) {
-        perror("fork");
-        exit(1);
-    }
-}
+/* preparar strings para execl */
+char worker_id_str[16];
+char password_len_str[16];
+snprintf(worker_id_str, sizeof(worker_id_str), "%d", i);
+snprintf(password_len_str, sizeof(password_len_str), "%d", password_len);
 
-// no processo pai
-for (int i = 0; i < num_workers; i++) {
-    wait(NULL);
+pid_t pid = fork();
+if (pid < 0) {
+    perror("Erro no fork()");
+    exit(1);
+} else if (pid == 0) {
+    /* filho -> executar worker */
+    /* ordem de args exigida pelo worker: <hash> <start> <end> <charset> <len> <id> */
+    execl("./worker", "worker",
+          target_hash,
+          start_pass,
+          end_pass,
+          charset,
+          password_len_str,
+          worker_id_str,
+          (char *)NULL);
+    /* se execl retornar, houve erro */
+    perror("Erro no execl()");
+    _exit(1);
+} else {
+    /* pai */
+    workers[i] = pid;
+    printf("Worker %d criado: PID %d  intervalo: '%s' -> '%s'\n", i, pid, start_pass, end_pass);
 }
 
 ```
